@@ -77,7 +77,7 @@ class Usuario(luigi.Task):
 
 	def output(self):      
 		
-		return luigi.to_pickle(self.output_df)
+		return luigi.LocalTarget(self.output_df)
 		
 
 	def run(self):
@@ -90,7 +90,7 @@ class Usuario(luigi.Task):
 
 		print df.head()
 
-		pd.to_pickle(df,self.output().path)  
+		pd.save(df,self.output().path)  
 
 
 class Sesionizar(luigi.Task):
@@ -116,14 +116,14 @@ class Sesionizar(luigi.Task):
 		df['Date_Time'] =  pd.to_datetime(df['Date_Time'], format='%d/%b/%Y:%H:%M:%S')
 		df['id'] = df['Date_Time'].map(str)+df['Response_Code']+df['URL']
 		df['Rank'] = df.groupby(['Host'])['id'].rank(ascending=True)
-		df['Date_Time'] = pd.to_datetime(df['Date_Time'])
+		#df['Date_Time'] = pd.to_datetime(df['Date_Time'])
 		df = df.sort(['Host', 'Date_Time','Rank'], ascending=[1,1,0])
 		df['time_diff'] = df.groupby('Host')['Date_Time'].diff()
 		df['time_diff'] = df['time_diff'].fillna(0)
 
 		print df.head()
 
-		pd.to_pickle(df,self.output().path)  
+		pd.save(df,self.output().path)  
 
 class Enriquecer(luigi.Task):
 	
@@ -142,6 +142,7 @@ class Enriquecer(luigi.Task):
 		
 		return luigi.LocalTarget(self.output_df2)
 		#return luigi.LocalTarget('%s.csv' % self.output_df2)
+		#df.to_csv("/Users/carlosmunguia/Desktop/conacyt/file_name.csv")
 
 	def run(self):
 		df=pd.read_pickle(self.input().path)
@@ -150,10 +151,9 @@ class Enriquecer(luigi.Task):
 		df['month'] = pd.DatetimeIndex(df['Date_Time']).month
 		df['day'] = pd.DatetimeIndex(df['Date_Time']).day
 		df['hour'] = pd.DatetimeIndex(df['Date_Time']).hour
-		df["date"] =  pd.DatetimeIndex(df['Date_Time']).date
-		df["day_of_week"] =  pd.DatetimeIndex(df['Date_Time']).dayofweek
+		df['date'] =  pd.DatetimeIndex(df['Date_Time']).date
+		df['day_of_week'] =  pd.DatetimeIndex(df['Date_Time']).dayofweek
 		#df['day_of_week'] = df['Date_Time'].dt.dayofweek
-		df["day_of_week"] =  pd.DatetimeIndex(df['Date_Time']).dayofweek
 		days = {0:'Lunes',1:'Martes',2:'Miercoles',3:'Jueves',4:'Viernes',5:'Sabado',6:'Domingo'}
 		df['day_of_week'] = df['day_of_week'].apply(lambda x: days[x])
 		df['dif_seg_clicks'] = df['time_diff'].apply(lambda x: x  / np.timedelta64(1,'s')).astype('int64') % (24*60)
@@ -161,7 +161,7 @@ class Enriquecer(luigi.Task):
 		df.loc[df.Bytes_Sent == '-', ['Bytes_Sent']] = 0
 		print self.input().path
 
-		#pd.save(df,self.output().path)  
+		pd.save(df,self.output().path)  
 
 		df.to_csv('%s.csv' % self.input().path)
         
